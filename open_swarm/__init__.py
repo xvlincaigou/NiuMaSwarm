@@ -35,7 +35,7 @@ from .rollout import (
     RolloutConfig,
     RolloutResult,
 )
-from .tool import BaseTool, ToolResult, SearchTool
+from .tool import BaseTool, ToolResult, SearchTool, FeishuDocTool, FeishuWikiTool
 from .swarm_tool import CreateSubagentTool, TaskTool
 from .utils import LLMClient
 
@@ -56,6 +56,8 @@ __all__ = [
     "BaseTool",
     "ToolResult",
     "SearchTool",
+    "FeishuDocTool",
+    "FeishuWikiTool",
     # Swarm Tools
     "CreateSubagentTool",
     "TaskTool",

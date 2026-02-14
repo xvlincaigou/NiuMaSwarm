@@ -1,4 +1,4 @@
-# Open Swarm
+# NiuMaSwarm
 
 A lightweight, extensible multi-agent rollout framework for orchestrating AI agents.
 
@@ -24,19 +24,25 @@ pip install -e .
 
 ## Quick Start
 
-See `run_examples/` for complete working examples:
+See `run_examples/` and `examples/` for complete working examples:
 
 ```bash
 # Set environment variables
 export KIMI_API_KEY="your-kimi-api-key"
 export OPENAI_API_KEY="your-openai-api-key"
 export SERPER_API_KEY="your-serper-api-key"  # optional
+export FEISHU_APP_ID="your-feishu-app-id"    # optional, for Feishu docs
+export FEISHU_APP_SECRET="your-feishu-app-secret"
 
-# Run kimi + kimi configuration
+# Run basic examples
 python run_examples/run_kimi_kimi.py
-
-# Run kimi + qwen configuration
 python run_examples/run_kimi_qwen.py
+
+# Run research report generation
+python examples/research_report.py
+
+# Run autonomous research swarm
+python examples/auto_research_swarm.py
 ```
 
 ### Simple Agent
@@ -130,7 +136,16 @@ export OPENAI_BASE_URL=https://api.openai.com/v1  # Optional
 
 # Search Tool (Serper - Google Search API)
 export SERPER_API_KEY=your-serper-key  # Get from https://serper.dev
+
+# Feishu/Lark Document Tool (Open Platform)
+export FEISHU_APP_ID=your-feishu-app-id
+export FEISHU_APP_SECRET=your-feishu-app-secret
+
+# Test Feishu integration
+python examples/test_feishu.py
 ```
+
+The `test_feishu.py` script provides an interactive way to test Feishu document creation with various formatting options including headings, lists, tables, and code blocks.
 
 ### AgentConfig
 
@@ -156,6 +171,118 @@ export SERPER_API_KEY=your-serper-key  # Get from https://serper.dev
 | `storage_path` | str | None | Path to save results as JSONL |
 | `print_tool_calls` | bool | True | Print tool calls to terminal |
 | `print_tool_results` | bool | True | Print tool results to terminal |
+
+## Feishu Document Tool
+
+Use `FeishuDocTool` to create cloud documents on Feishu (Lark) platform:
+
+```python
+from open_swarm import FeishuDocTool
+
+feishu_tool = FeishuDocTool()
+
+# Create a document
+result = await feishu_tool.execute(
+    title="Research Report Title",
+    content="""# Executive Summary
+
+## Key Findings
+- Finding 1
+- Finding 2
+
+## Detailed Analysis
+Content here..."""
+)
+
+print(result.content)  # Outputs document URL
+```
+
+Supported formatting:
+- `# Heading 1` / `## Heading 2` / `### Heading 3`
+- `- List item` / `* List item`
+- `1. Numbered list`
+- `**Bold**` / `*Italic*`
+- \`\`\`Code blocks\`\`\`
+- `| Tables | with | columns |` (formatted as aligned text)
+
+## Automated Research Reports
+
+### Basic Research Report
+
+`examples/research_report.py` demonstrates how to use Agent Swarm to automatically generate research reports and save them to Feishu:
+
+```bash
+# Set all required environment variables
+export KIMI_API_KEY="your-kimi-api-key"
+export SERPER_API_KEY="your-serper-api-key"
+export FEISHU_APP_ID="your-feishu-app-id"
+export FEISHU_APP_SECRET="your-feishu-app-secret"
+
+# Run the research report generator
+python examples/research_report.py
+```
+
+Workflow:
+1. **Create specialized sub-agents**: Researcher, Analyst, Writer
+2. **Delegate tasks in parallel**: Multiple sub-agents research different aspects simultaneously
+3. **Synthesize results**: Main agent integrates all findings
+4. **Generate Feishu document**: Automatically create a formatted cloud document
+
+### Autonomous Research Swarm
+
+`examples/auto_research_swarm.py` demonstrates a more advanced workflow where the main agent autonomously decides what specialized sub-agents to create:
+
+```bash
+# Set all required environment variables
+export KIMI_API_KEY="your-kimi-api-key"
+export SERPER_API_KEY="your-serper-api-key"
+export FEISHU_APP_ID="your-feishu-app-id"
+export FEISHU_APP_SECRET="your-feishu-app-secret"
+
+# Run the autonomous research swarm
+python examples/auto_research_swarm.py
+```
+
+Features:
+- **Autonomous agent creation**: Main agent analyzes the research topic and decides what specialized sub-agents are needed
+- **Parallel execution**: All sub-agents execute research tasks concurrently
+- **Intelligent synthesis**: Main agent compiles all findings into a comprehensive report
+- **Automatic document creation**: Saves the final report to Feishu with formatted tables and sections
+
+Example output:
+- Creates 4 specialized analysts (Tech, Market, Business, User Behavior)
+- Executes research in parallel
+- Generates a comprehensive report with multiple tables
+- Saves to Feishu with document URL
+
+## Parallel Sub-agent Execution
+
+The `TaskTool` now supports parallel execution of multiple sub-agents:
+
+```python
+from open_swarm import TaskTool
+
+# Method 1: Single task (sequential)
+result = await task_tool.execute(
+    agent="researcher",
+    prompt="Research topic A"
+)
+
+# Method 2: Multiple tasks in parallel
+results = await task_tool.execute(
+    tasks=[
+        {"agent": "tech_analyst", "prompt": "Analyze technology trends"},
+        {"agent": "market_analyst", "prompt": "Analyze market competition"},
+        {"agent": "business_analyst", "prompt": "Analyze business models"},
+    ]
+)
+# Returns array of results in the same order as tasks
+```
+
+This is useful for:
+- Running multiple independent research tasks simultaneously
+- Comparing different analysis perspectives
+- Speeding up complex multi-step workflows
 
 ## Creating Custom Tools
 
@@ -195,11 +322,24 @@ class MyTool(BaseTool):
 open_swarm/
 ├── agent/          # Agent class and configuration
 ├── rollout/        # Rollout implementations (Main, Sub)
-├── tool/           # Base tool and SearchTool
-├── swarm_tool/     # CreateSubagent and Task tools
+├── tool/           # Base tool, SearchTool, FeishuDocTool
+├── swarm_tool/     # CreateSubagentTool, TaskTool (supports parallel execution)
 ├── utils/          # LLM client
-└── run_examples/   # Example scripts
+├── run_examples/   # Basic example scripts
+└── examples/       # Advanced examples (research, auto-swarm)
 ```
+
+### Key Components
+
+| Component | Description |
+|-----------|-------------|
+| `Agent` | Core agent with tool-use capabilities |
+| `MainRollout` | Orchestrates the main agent execution |
+| `SubRollout` | Handles sub-agent task execution |
+| `SearchTool` | Web search via Serper API |
+| `FeishuDocTool` | Create Feishu/Lark cloud documents |
+| `CreateSubagentTool` | Dynamically create specialized sub-agents |
+| `TaskTool` | Execute sub-agent tasks (supports parallel execution via `tasks` array) |
 
 ## Storage Format
 

@@ -24,8 +24,17 @@ class LLMClient:
         base_url: Optional[str] = None,
     ):
         self.model_id = model_id
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.base_url = base_url or os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        # Support both OPENAI_API_KEY and KIMI_API_KEY environment variables
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("KIMI_API_KEY")
+        # Default to Kimi API if using kimi model and no base_url specified
+        if base_url:
+            self.base_url = base_url
+        elif os.getenv("OPENAI_BASE_URL"):
+            self.base_url = os.getenv("OPENAI_BASE_URL")
+        elif "kimi" in model_id.lower():
+            self.base_url = "https://api.moonshot.cn/v1"
+        else:
+            self.base_url = "https://api.openai.com/v1"
 
         import httpx
         self.client = AsyncOpenAI(
